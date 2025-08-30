@@ -3,13 +3,19 @@
 #ifndef __INT24_TYPE__
 #error "This library is intended for the 24-bit ez80 architecture"
 #endif
+#ifndef __cplusplus
+#error "This library is a C++ library, it does not currently work in C"
+#endif
 
+#ifndef FIXEDPOINT_NO_STDIO
 #include <cstdio>
+#endif
 #include <cmath>
 
 extern "C" {
     int __operator_mul(int a, int b);
     int __operator_div(int a, int b);
+    int __operator_tostring(char* buf, int t);
 }
 
 // 16.8 signed fixed point number
@@ -22,12 +28,10 @@ class FixedPoint {
             short i;
         };
     };
-    private:
     #define ISZ (8*sizeof(i))
     #define FSZ (8*sizeof(f))
     #define IMAX (1 << ISZ)
     #define FMAX (1 << FSZ)
-    public:
     inline FixedPoint(float v) {
         i = floorf(v);
         f = (v - i) * FMAX;
@@ -125,12 +129,18 @@ class FixedPoint {
         }
         return fromInt(rv);
     }
+#ifndef FIXEDPOINT_NO_STDIO
     // return a float string representation of this fixed point number.
     inline int tostring(char* buf) {
-        return sprintf(buf, "%u.%03d", i, f*1000/256);
+        return sprintf(buf, "%d.%03u", i, (f*1000)>>FSZ);
     }
+#else
+    inline int tostring(char* buf) {
+        return __operator_tostring(buf, t);
+    }
+#endif
     // parse a float string and return a fixed point number.
-    static inline FixedPoint fromstring(char* str) {
+    static FixedPoint fromstring(char* str) {
         unsigned int u = 0;
         unsigned int l = 0;
         unsigned int n = 1;
@@ -154,4 +164,8 @@ class FixedPoint {
         }
         return FixedPoint(neg ? -u : u, (l*256)/n);
     }
+    #undef ISZ
+    #undef FSZ
+    #undef IMAX
+    #undef FMAX
 };
